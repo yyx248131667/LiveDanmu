@@ -1,0 +1,12 @@
+﻿<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="LiveDanmuDesktop.MainWindow"
+        Title="直播弹幕助手"
+        Width="1100" Height="720"
+        MinWidth="820" MinHeight="560"
+        SystemDecorations="None"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaChromeHints="NoChrome"
+        ExtendClientAreaTitleBarHeightHint="-1">
+    <Panel Name="rootPanel" />
+</Window>

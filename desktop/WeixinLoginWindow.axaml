@@ -1,0 +1,25 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="LiveDanmuDesktop.WeixinLoginWindow"
+        Title="视频号登录" Width="920" Height="720"
+        MinWidth="720" MinHeight="520" WindowStartupLocation="CenterOwner" Background="#111315">
+  <Grid RowDefinitions="60,*,60">
+    <Border Grid.Row="0" Background="#171A1D" BorderBrush="#2A2F33" BorderThickness="0,0,0,1" Padding="18,0">
+      <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
+        <StackPanel>
+          <TextBlock Text="微信视频号登录" Foreground="#F3F4F1" FontSize="16" FontWeight="DemiBold"/>
+          <TextBlock Name="StatusText" Text="正在初始化扫码页面…" Foreground="#929A9F" FontSize="12"/>
+        </StackPanel>
+        <Button Name="CloseButton" Grid.Column="1" Content="关闭" FontSize="12" Padding="16,8" Background="#24282C" Foreground="#D7DADB" BorderThickness="0"/>
+      </Grid>
+    </Border>
+    <Border Grid.Row="1" Background="#0F1113"><Grid><TextBlock Name="LoadingText" Text="正在加载视频号登录页面…" Foreground="#929A9F" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center"/></Grid></Border>
+    <Border Grid.Row="2" Background="#171A1D" BorderBrush="#2A2F33" BorderThickness="0,1,0,0" Padding="16,9">
+      <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+        <TextBlock Text="扫码登录完成后点击保存登录状态" Foreground="#929A9F" FontSize="12" VerticalAlignment="Center"/>
+        <Button Name="RefreshButton" Grid.Column="1" Content="刷新页面" FontSize="12" Padding="16,8" Background="#24282C" Foreground="#D7DADB" BorderThickness="0"/>
+        <Button Name="SaveButton" Grid.Column="2" Content="保存登录状态" FontSize="12" Padding="16,8" Background="#D65A4A" Foreground="White" BorderThickness="0"/>
+      </Grid>
+    </Border>
+  </Grid>
+</Window>

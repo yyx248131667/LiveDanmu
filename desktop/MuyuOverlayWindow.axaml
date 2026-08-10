@@ -1,0 +1,8 @@
+﻿<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="LiveDanmuDesktop.MuyuOverlayWindow"
+        Title="Muyu Overlay"
+        Width="400" Height="400"
+        Background="Transparent"
+        TransparencyLevelHint="Transparent">
+</Window>

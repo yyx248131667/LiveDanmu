@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>电子木鱼 - OBS显示</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Microsoft YaHei', sans-serif;
+      background: #54d100;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .muyu-container {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 16px 50px 32px;
+      border-radius: 20px;
+      background: #54d100;
+      box-shadow: none;
+      overflow: hidden; /* 限制所有动效在容器内 */
+    }
+
+    /* 平台标签 - 默认隐藏 */
+    .platform-label {
+      display: none;
+    }
+
+    .muyu-image {
+      max-width: 200px;
+      max-height: 200px;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      cursor: pointer;
+      transition: transform 0.1s;
+      position: relative;
+      z-index: 1;
+    }
+    .muyu-image:active { transform: scale(0.95); }
+    .muyu-image.hit { animation: muyuBounce 0.3s ease; }
+    @keyframes muyuBounce {
+      0% { transform: scale(1); }
+      30% { transform: scale(0.9); }
+      60% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+
+    /* 计数区域 */
+    .counter-area {
+      position: relative;
+      margin-top: 20px;
+      text-align: center;
+    }
+
+    /* 浮动文字容器 - 覆盖整个木鱼区域上方 */
+    .merit-float-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 60px;
+      pointer-events: none;
+      z-index: 20;
+    }
+    .merit-text {
+      position: absolute;
+      left: 50%;
+      font-size: 28px;
+      font-weight: bold;
+      color: #ffffff;
+      text-shadow:
+        0 1px 3px rgba(0,0,0,0.3),
+        0 0 12px rgba(255,255,255,0.4);
+      white-space: nowrap;
+      animation: meritFloat 1.2s cubic-bezier(0.25, 0.1, 0.25, 1) forwards;
+      will-change: transform, opacity;
+    }
+    @keyframes meritFloat {
+      0%   { opacity: 0; transform: translate(-50%, 0) scale(0.8); }
+      15%  { opacity: 1; transform: translate(-50%, -20px) scale(1.05); }
+      40%  { opacity: 1; transform: translate(-50%, -60px) scale(1); }
+      100% { opacity: 0; transform: translate(-50%, -130px) scale(0.9); }
+    }
+
+    .counter-text {
+      font-size: 36px;
+      font-weight: bold;
+      color: #ffffff;
+      text-shadow: 0 0 10px rgba(255,255,255,0.3);
+    }
+  </style>
+</head>
+<body>
+  <div class="muyu-container" id="muyu-container">
+    <div class="platform-label" id="platform-label"></div>
+    <div class="merit-float-container" id="merit-float"></div>
+    <img src="assets/木鱼.png" class="muyu-image" id="muyu-image" alt="木鱼" />
+    <div class="counter-area">
+      <div class="counter-text" id="counter-text"><span id="counter-label">功德</span> <span id="counter-number">0</span></div>
+    </div>
+  </div>
+
+  <script>
+    var state = {
+      displayedTotal: 0,
+      backendTotal: 0,
+      pendingHits: 0,
+      config: null,
+      platform: 'douyin',
+      tickTimer: null,
+      displayText: '上岸机会',
+      textColor: '#ffffff',
+      numColor: '#e8312a'
+    };
+
+    // 敲击速率常量
+    var MAX_AUTO_HITS = 30000;
+
+    async function init() {
+      var params = new URLSearchParams(window.location.search);
+      state.platform = params.get('platform') || 'douyin';
+
+      // 每次打开窗口从0开始
+      state.displayedTotal = 0;
+      state.backendTotal = 0;
+      state.pendingHits = 0;
+      localStorage.setItem('muyu-total-' + state.platform, '0');
+
+      await loadConfig();
+      applyConfig();
+      applyPlatformLabel();
+      startTickLoop();
+      connectToMainWindow();
+      document.getElementById('muyu-image').addEventListener('click', function() {
+        enqueueHits(1);
+      });
+    }
+
+    async function loadConfig() {
+      try {
+        var saved = localStorage.getItem('muyu-config-' + state.platform);
+        if (saved) {
+          state.config = JSON.parse(saved);
+        } else {
+          try {
+            var configFile = state.platform === 'douyin' ? 'douyin-muyu.json' : 'shipinhao-muyu.json';
+            var res = await fetch('../../configs/' + configFile);
+            if (res.ok) state.config = await res.json();
+          } catch (e) {}
+        }
+      } catch (e) {
+        console.error('[木鱼显示] 配置加载失败:', e);
+      }
+    }
+
+    function applyPlatformLabel() {
+      var label = document.getElementById('platform-label');
+      var container = document.getElementById('muyu-container');
+      // 平台标签始终隐藏
+      label.style.display = 'none';
+      if (state.platform === 'weixin') {
+        // 视频号：透明背景（WebView2 DefaultBackgroundColor=Transparent 支持）
+        document.body.style.background = 'transparent';
+        container.style.background = 'transparent';
+        container.style.boxShadow = 'none';
+        container.style.borderRadius = '0';
+      }
+      document.title = '木鱼 - ' + (state.platform === 'weixin' ? '视频号' : '抖音');
+    }
+
+    function applyConfig() {
+      var container = document.getElementById('muyu-container');
+      var image = document.getElementById('muyu-image');
+      var counterText = document.getElementById('counter-text');
+
+      if (state.config) {
+        if (state.config.text) state.displayText = state.config.text;
+        if (state.config.textColor) state.textColor = state.config.textColor;
+        if (state.config.numColor) state.numColor = state.config.numColor;
+        if (state.config.customSkinData) image.src = state.config.customSkinData;
+        var above = state.config.textLayer !== 'below';
+        document.querySelector('.counter-area').style.zIndex = above ? '3' : '0';
+        image.style.zIndex = above ? '1' : '3';
+      }
+
+      // 视频号保持透明背景
+      if (state.config && state.platform !== 'weixin' && state.config.display && state.config.display.backgroundColor)
+        container.style.backgroundColor = state.config.display.backgroundColor;
+      
+      // 后端配置的自定义图片
+      if (state.config && state.config.woodfish && state.config.woodfish.enableCustomImage && state.config.woodfish.customImage)
+        image.src = state.config.woodfish.customImage;
+
+      // 从 localStorage 加载前端自定义图片（优先级最高）
+      var customImg = localStorage.getItem('muyu-custom-img-' + state.platform);
+      if (customImg) {
+        image.src = customImg;
+        image.style.opacity = '1';
+      } else if (state.platform === 'weixin') {
+        image.style.opacity = '0';
+      }
+
+      // 从 localStorage 加载前端自定义设置（显示文字/颜色）
+      try {
+        var settingsRaw = localStorage.getItem('muyu-settings-' + state.platform);
+        if (settingsRaw) {
+          var s = JSON.parse(settingsRaw);
+          if (s.displayText) state.displayText = s.displayText;
+          if (s.textColor) state.textColor = s.textColor;
+        }
+      } catch(e) {}
+
+      // 应用文字颜色
+      var color = state.textColor || (state.config && state.config.display ? state.config.display.meritTextColor : null) || '#ffffff';
+      counterText.style.color = color;
+      document.getElementById('counter-label').style.color = color;
+      document.getElementById('counter-number').style.color = state.numColor || '#e8312a';
+
+      updateDisplay();
+    }
+
+    // ─── 敲击队列系统 ───
+
+    // 将 hits 加入待敲击队列
+    function enqueueHits(hits) {
+      hits = Math.max(1, Math.floor(Number(hits) || 1));
+      state.pendingHits = Math.min(MAX_AUTO_HITS, state.pendingHits + hits);
+      state.backendTotal += hits;
+      // 同步后端总数到 localStorage（供其他窗口读取）
+      localStorage.setItem('muyu-total-' + state.platform, state.backendTotal);
+    }
+
+    // 主循环：按速率消费队列，每次敲1下
+    function startTickLoop() {
+      function tick() {
+        if (state.pendingHits > 0) {
+          // 消费1次
+          state.pendingHits--;
+          state.displayedTotal++;
+          playHitAnimation();
+          showMeritFloat(1);
+          updateDisplay();
+        }
+
+        // 积压时自动提速，逐次消费，计数与敲击始终保持 1:1。
+        var interval = state.pendingHits >= 1000 ? 16 : state.pendingHits >= 100 ? 40 : 120;
+        if (state.pendingHits <= 0) interval = 200;
+
+        state.tickTimer = setTimeout(tick, interval);
+      }
+      tick();
+    }
+
+    // ─── localStorage 轮询（接收后端数据） ───
+
+    function connectToMainWindow() {
+      window.addEventListener('message', function(event) {
+        if (!event.data) return;
+        if (event.data.type === 'muyu-trigger') {
+          if (event.data.platform === state.platform) {
+            enqueueHits(event.data.hits || 1);
+          }
+        }
+        if (event.data.type === 'muyu-config-update') {
+          if (event.data.platform === state.platform && event.data.config) {
+            state.config = event.data.config;
+            applyConfig();
+          }
+        }
+      });
+
+      // 轮询 localStorage 获取后端推送的数据
+      var lastConfigVer = localStorage.getItem('muyu-config-ver-' + state.platform) || '';
+      setInterval(function() {
+        // 配置变化 - 用版本号检测，避免大 JSON 比较
+        var ver = localStorage.getItem('muyu-config-ver-' + state.platform) || '';
+        if (ver && ver !== lastConfigVer) {
+          lastConfigVer = ver;
+          // 尝试加载后端配置
+          var saved = localStorage.getItem('muyu-config-' + state.platform);
+          if (saved) {
+            try { state.config = JSON.parse(saved); } catch (e) {}
+          }
+          // 始终重新应用配置（包括前端自定义设置和图片）
+          applyConfig();
+        }
+        // 检测后端总数变化，计算增量加入队列
+        var savedTotal = localStorage.getItem('muyu-total-' + state.platform);
+        if (savedTotal) {
+          var n = parseInt(savedTotal);
+          if (!isNaN(n) && n > state.backendTotal) {
+            var delta = n - state.backendTotal;
+            state.backendTotal = n;
+            state.pendingHits += delta;
+          }
+        }
+      }, 200);
+    }
+
+    // ─── 动画 ───
+
+    function playHitAnimation() {
+      var image = document.getElementById('muyu-image');
+      image.classList.remove('hit');
+      void image.offsetWidth;
+      image.classList.add('hit');
+    }
+
+    function showMeritFloat(hits) {
+      var container = document.getElementById('merit-float');
+      var el = document.createElement('div');
+      el.className = 'merit-text';
+      var txt = state.displayText || '上岸机会';
+      el.textContent = txt + ' +' + hits;
+      var color = state.textColor || '#ffffff';
+      el.style.color = color;
+      el.style.textShadow = '0 1px 3px rgba(0,0,0,0.3), 0 0 12px ' + color + '66';
+      // 从容器底部中央偏随机位置开始上浮
+      el.style.left = (50 + (Math.random() - 0.5) * 30) + '%';
+      el.style.bottom = '0';
+      container.appendChild(el);
+      // 动画结束后移除（与 CSS animation 时长一致）
+      setTimeout(function() { el.remove(); }, 1200);
+    }
+
+    function updateDisplay() {
+      var txt = state.displayText || '上岸机会';
+      document.getElementById('counter-label').textContent = txt;
+      document.getElementById('counter-number').textContent = state.displayedTotal.toLocaleString();
+    }
+
+    // ─── 接收 C# PostMessageToWeb 推送的消息 ───
+    window.onHostMessage = function(data) {
+      if (!data || !data.type) return;
+
+      // 木鱼触发 - 接收所有平台的消息
+      if (data.type === 'muyu-hit') {
+        var hitP = data.platform || 'douyin';
+        if (hitP !== state.platform) return;
+        var hits = data.hits || 1;
+        if (data.method === 'WebcastGiftMessage' && state.config && state.config.giftMode === 'merge') {
+          state.backendTotal += hits;
+          state.displayedTotal += hits;
+          playHitAnimation();
+          showMeritFloat(hits);
+          updateDisplay();
+        } else {
+          enqueueHits(hits);
+        }
+      }
+
+      // 配置更新
+      if (data.type === 'muyu-config') {
+        if (data.platform === state.platform && data.config) {
+          state.config = data.config;
+          applyConfig();
+          console.log('[木鱼显示] 配置已更新（来自后端推送）');
+        }
+      }
+
+      // 计数重置
+      if (data.type === 'muyu-reset') {
+        state.displayedTotal = 0;
+        state.backendTotal = 0;
+        state.pendingHits = 0;
+        updateDisplay();
+      }
+    };
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else { init(); }
+  </script>
+</body>
+</html>

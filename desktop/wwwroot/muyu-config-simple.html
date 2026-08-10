@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>电子木鱼配置</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #1a1a2e; --bg2: #16213e; --bg3: #0f3460;
+      --text: #e0e0e0; --text2: #a0a0a0;
+      --accent: #e94560; --green: #00c853;
+      --border: #2a2a4a;
+    }
+    body { font-family: 'Microsoft YaHei', sans-serif; background: var(--bg); color: var(--text); padding: 20px; }
+    
+    .container { max-width: 900px; margin: 0 auto; }
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid var(--border); }
+    .header h1 { font-size: 24px; color: var(--accent); }
+    
+    .platform-tabs { display: flex; gap: 12px; margin-bottom: 24px; }
+    .tab-btn { padding: 12px 24px; background: var(--bg2); border: 2px solid var(--border); color: var(--text2); border-radius: 8px; cursor: pointer; font-size: 15px; font-weight: 600; transition: all 0.3s; }
+    .tab-btn:hover { background: var(--bg3); }
+    .tab-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+    
+    .config-panel { background: var(--bg2); border-radius: 12px; padding: 24px; border: 1px solid var(--border); }
+    .config-section { margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px solid var(--border); }
+    .config-section:last-child { margin-bottom: 0; border-bottom: none; padding-bottom: 0; }
+    .section-title { font-size: 16px; color: var(--accent); margin-bottom: 16px; }
+    
+    .form-row { display: flex; align-items: center; gap: 16px; margin-bottom: 12px; }
+    .form-row:last-child { margin-bottom: 0; }
+    .form-label { font-size: 14px; color: var(--text); min-width: 100px; }
+    .form-input, .form-select { background: rgba(0,0,0,0.3); border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: 6px; font-size: 14px; flex: 1; }
+    .form-input:focus, .form-select:focus { outline: none; border-color: var(--accent); }
+    .form-select { cursor: pointer; }
+    
+    .checkbox-group { display: flex; gap: 24px; flex: 1; }
+    .checkbox-item { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+    .checkbox-item input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
+    
+    .inline-inputs { display: flex; gap: 16px; flex: 1; }
+    .inline-inputs .form-input { width: 100px; }
+    
+    .color-picker-wrapper { display: flex; gap: 12px; align-items: center; flex: 1; }
+    .color-picker { width: 50px; height: 36px; border: 2px solid var(--border); border-radius: 6px; cursor: pointer; }
+    .color-value { padding: 8px 12px; background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 6px; font-family: monospace; font-size: 13px; min-width: 80px; text-align: center; }
+    
+    .btn-group { display: flex; gap: 12px; margin-top: 24px; }
+    .btn { padding: 12px 24px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn-secondary { background: var(--bg3); color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary:hover { background: rgba(255,255,255,0.1); }
+    .btn-success { background: var(--green); color: white; }
+    .btn-success:hover { opacity: 0.9; }
+    
+    .btn-file { padding: 8px 16px; background: var(--bg3); border: 1px solid var(--border); color: var(--text); border-radius: 6px; cursor: pointer; font-size: 13px; transition: all 0.2s; }
+    .btn-file:hover { background: rgba(255,255,255,0.1); }
+    
+    .help-text { font-size: 12px; color: var(--text2); margin-top: 4px; }
+
+    /* 实时预览窗口 */
+    .live-preview { background: rgba(0,0,0,0.5); border: 2px solid var(--border); border-radius: 12px; padding: 20px; margin-top: 8px; position: relative; overflow: hidden; min-height: 200px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .live-preview-title { position: absolute; top: 8px; left: 12px; font-size: 11px; color: var(--text2); background: rgba(0,0,0,0.5); padding: 2px 8px; border-radius: 4px; }
+    .live-preview .muyu-img { max-width: 120px; max-height: 120px; width: auto; height: auto; object-fit: contain; cursor: pointer; transition: transform 0.1s; }
+    .live-preview .muyu-img:active { transform: scale(0.92); }
+    .live-preview .muyu-img.hit { animation: muyuBounce 0.3s ease; }
+    @keyframes muyuBounce { 0%{transform:scale(1)} 30%{transform:scale(0.88)} 60%{transform:scale(1.04)} 100%{transform:scale(1)} }
+    .live-preview .float-container { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); width: 200px; height: 60px; pointer-events: none; }
+    .live-preview .float-text { position: absolute; font-size: 22px; font-weight: bold; white-space: nowrap; animation: floatUp 1.2s ease forwards; text-shadow: 0 0 8px rgba(255,215,0,0.5); }
+    @keyframes floatUp { 0%{opacity:1;transform:translateY(0)} 100%{opacity:0;transform:translateY(-50px)} }
+    .live-stats { margin-top: 8px; text-align: center; }
+    .live-counter { font-size: 20px; font-weight: bold; }
+
+    /* 平台子页面 - 隐藏非当前平台 */
+    .platform-page { display: none; }
+    .platform-page.active { display: block; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🪘 电子木鱼配置</h1>
+      <button class="btn btn-secondary" onclick="window.close()">关闭窗口</button>
+    </div>
+    
+    <div class="platform-tabs">
+      <button class="tab-btn active" data-platform="douyin">抖音木鱼</button>
+      <button class="tab-btn" data-platform="weixin">视频号木鱼</button>
+    </div>
+    
+    <!-- 抖音子页面 -->
+    <div class="platform-page active" id="page-douyin">
+      <div class="config-panel">
+        <div class="config-section">
+          <div class="section-title">🖼️ 自定义图片</div>
+          <div class="form-row">
+            <div class="form-label">选择图片</div>
+            <input type="file" id="douyin-image-file-input" accept="image/png,image/jpg,image/jpeg,image/gif,image/webp,image/svg+xml" style="display: none;" />
+            <button class="btn-file" onclick="document.getElementById('douyin-image-file-input').click()">📁 选择图片</button>
+            <span id="douyin-selected-image-name" style="color: var(--text2); font-size: 13px;">使用默认木鱼图片</span>
+          </div>
+        </div>
+        
+        <div class="config-section">
+          <div class="section-title">⚡ 触发动效设置</div>
+          <div class="form-row">
+            <div class="checkbox-group">
+              <label class="checkbox-item"><input type="checkbox" id="douyin-trigger-gift" checked /><span>礼物触发</span></label>
+              <label class="checkbox-item"><input type="checkbox" id="douyin-trigger-danmaku" checked /><span>弹幕触发</span></label>
+              <label class="checkbox-item"><input type="checkbox" id="douyin-trigger-like" checked /><span>点赞触发</span></label>
+            </div>
+          </div>
+        </div>
+        
+        <div class="config-section">
+          <div class="section-title">🎁 礼物选择</div>
+          <div class="form-row">
+            <div class="form-label">选择礼物</div>
+            <select class="form-select" id="douyin-gift-selector" multiple size="6"></select>
+          </div>
+          <p class="help-text">按住Ctrl或Shift可多选礼物</p>
+        </div>
+        
+        <div class="config-section">
+          <div class="section-title">✖️ 倍数设置</div>
+          <div class="form-row">
+            <div class="form-label">礼物倍数</div>
+            <input type="number" class="form-input" id="douyin-gift-multiplier" value="1" min="0.1" step="0.1" style="width: 100px;" />
+            <div class="form-label" style="min-width: 80px; margin-left: 24px;">点赞倍数</div>
+            <input type="number" class="form-input" id="douyin-like-multiplier" value="1" min="0.1" step="0.1" style="width: 100px;" />
+          </div>
+        </div>
+        
+        <div class="config-section">
+          <div class="section-title">🎨 显示设置</div>
+          <div class="form-row">
+            <div class="form-label">显示文字</div>
+            <input type="text" class="form-input" id="douyin-merit-text" value="上岸机会" style="width: 150px;" />
+          </div>
+          <div class="form-row">
+            <div class="form-label">文字颜色</div>
+            <div class="color-picker-wrapper">
+              <input type="color" class="color-picker" id="douyin-text-color" value="#ffd700" />
+              <span class="color-value" id="douyin-text-color-value">#ffd700</span>
+            </div>
+            <div class="form-label" style="min-width: 80px; margin-left: 24px;">背景颜色</div>
+            <div class="color-picker-wrapper">
+              <input type="color" class="color-picker" id="douyin-bg-color" value="#2d5016" />
+              <span class="color-value" id="douyin-bg-color-value">#2d5016</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 抖音实时预览 -->
+        <div class="config-section">
+          <div class="section-title">👁️ 实时预览</div>
+          <div class="live-preview" id="douyin-live-preview">
+            <span class="live-preview-title">点击木鱼测试效果</span>
+            <div class="float-container" id="douyin-float-container"></div>
+            <img src="assets/木鱼.png" class="muyu-img" id="douyin-live-muyu-img" alt="木鱼" />
+            <div class="live-stats">
+              <div class="live-counter" id="douyin-live-counter" style="color:#ffd700;">上岸机会 0</div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="config-section">
+          <div class="section-title">📹 浏览器显示</div>
+          <div class="form-row">
+            <button class="btn btn-success" id="btn-open-douyin-display">打开抖音浏览器显示</button>
+          </div>
+          <p class="help-text">点击按钮打开浏览器显示窗口，可用于OBS捕获</p>
+        </div>
+        
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="saveConfig('douyin')">💾 保存配置</button>
+          <button class="btn btn-success" onclick="applyConfig('douyin')">✅ 应用配置</button>
+          <button class="btn btn-secondary" onclick="resetConfig('douyin')">↺ 重置默认</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 视频号子页面 -->
+    <div class="platform-page" id="page-weixin">
+      <div class="config-panel">
+        <div class="config-section">
+          <div class="section-title">🖼️ 自定义图片</div>
+          <div class="form-row">
+            <div class="form-label">选择图片</div>
+            <input type="file" id="weixin-image-file-input" accept="image/png,image/jpg,image/jpeg,image/gif,image/webp,image/svg+xml" style="display: none;" />
+            <button class="btn-file" onclick="document.getElementById('weixin-image-file-input').click()">📁 选择图片</button>
+            <span id="weixin-selected-image-name" style="color: var(--text2); font-size: 13px;">使用默认木鱼图片</span>
+          </div>
+        </div>
+        
+        <div class="config-section">
+          <div class="section-title">⚡ 触发动效设置</div>
+          <div class="form-row">
+            <div class="checkbox-group">
+              <label class="checkbox-item"><input type="checkbox" id="weixin-trigger-gift" checked /><span>礼物触发</span></label>
+              <label class="checkbox-item"><input type="checkbox" id="weixin-trigger-danmaku" checked /><span>弹幕触发</span></label>
+              <label class="checkbox-item"><input type="checkbox" id="weixin-trigger-like" checked /><span>点赞触发</span></label>
+            </div>
+          </div>
+        </div>
+        
+        <div class="config-section">
+          <div class="section-title">🎁 礼物选择</div>
+          <div class="form-row">
+            <div class="form-label">选择礼物</div>
+            <select class="form-select" id="weixin-gift-selector" multiple size="6"></select>
+          </div>
+          <p class="help-text">按住Ctrl或Shift可多选礼物</p>
+        </div>
+        
+        <div class="config-section">
+          <div class="section-title">✖️ 倍数设置</div>
+          <div class="form-row">
+            <div class="form-label">礼物倍数</div>
+            <input type="number" class="form-input" id="weixin-gift-multiplier" value="1" min="0.1" step="0.1" style="width: 100px;" />
+            <div class="form-label" style="min-width: 80px; margin-left: 24px;">点赞倍数</div>
+            <input type="number" class="form-input" id="weixin-like-multiplier" value="1" min="0.1" step="0.1" style="width: 100px;" />
+          </div>
+        </div>
+        
+        <div class="config-section">
+          <div class="section-title">🎨 显示设置</div>
+          <div class="form-row">
+            <div class="form-label">显示文字</div>
+            <input type="text" class="form-input" id="weixin-merit-text" value="上岸机会" style="width: 150px;" />
+          </div>
+          <div class="form-row">
+            <div class="form-label">文字颜色</div>
+            <div class="color-picker-wrapper">
+              <input type="color" class="color-picker" id="weixin-text-color" value="#ffd700" />
+              <span class="color-value" id="weixin-text-color-value">#ffd700</span>
+            </div>
+            <div class="form-label" style="min-width: 80px; margin-left: 24px;">背景颜色</div>
+            <div class="color-picker-wrapper">
+              <input type="color" class="color-picker" id="weixin-bg-color" value="#2d5016" />
+              <span class="color-value" id="weixin-bg-color-value">#2d5016</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 视频号实时预览 -->
+        <div class="config-section">
+          <div class="section-title">👁️ 实时预览</div>
+          <div class="live-preview" id="weixin-live-preview">
+            <span class="live-preview-title">点击木鱼测试效果</span>
+            <div class="float-container" id="weixin-float-container"></div>
+            <img src="assets/木鱼.png" class="muyu-img" id="weixin-live-muyu-img" alt="木鱼" />
+            <div class="live-stats">
+              <div class="live-counter" id="weixin-live-counter" style="color:#ffd700;">上岸机会 0</div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="config-section">
+          <div class="section-title">📹 浏览器显示</div>
+          <div class="form-row">
+            <button class="btn btn-success" id="btn-open-weixin-display">打开视频号浏览器显示</button>
+          </div>
+          <div class="form-row" style="margin-top:8px;">
+            <button class="btn btn-primary" id="btn-open-weixin-overlay">打开透明叠加窗口（直播用）</button>
+          </div>
+          <p class="help-text">透明叠加窗口可直接覆盖在视频号直播画面上，背景完全透明</p>
+        </div>
+        
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="saveConfig('weixin')">💾 保存配置</button>
+          <button class="btn btn-success" onclick="applyConfig('weixin')">✅ 应用配置</button>
+          <button class="btn btn-secondary" onclick="resetConfig('weixin')">↺ 重置默认</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <script src="muyu-config-simple.js"></script>
+</body>
+</html>
