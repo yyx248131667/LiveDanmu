@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>💾 弹幕保存 - 多直播间监控</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
+      color: #e0e0e0;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .container {
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+
+    /* 顶部标题 */
+    .header {
+      text-align: center;
+      padding: 14px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      margin-bottom: 16px;
+    }
+    .header h1 {
+      font-size: 22px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #00d2ff, #7b68ee);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .header p {
+      color: #888;
+      font-size: 12px;
+      margin-top: 4px;
+    }
+
+    /* 平台区块 */
+    .platform-section {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+    .platform-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      font-size: 15px;
+      font-weight: 600;
+    }
+    .platform-title .icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+    .platform-title .icon.douyin {
+      background: linear-gradient(135deg, #fe2c55, #25f4ee);
+    }
+    .platform-title .icon.weixin {
+      background: linear-gradient(135deg, #07c160, #06ad56);
+    }
+
+    /* 直播间输入列表 */
+    .room-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .room-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      animation: fadeIn 0.2s ease;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .room-input {
+      flex: 1;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: #e0e0e0;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .room-input:focus {
+      border-color: #7b68ee;
+    }
+    .room-input::placeholder {
+      color: #555;
+    }
+    .room-status {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #555;
+      flex-shrink: 0;
+    }
+    .room-status.connected { background: #00b894; box-shadow: 0 0 6px #00b894; }
+    .room-status.connecting { background: #fdcb6e; box-shadow: 0 0 6px #fdcb6e; }
+    .room-status.error { background: #e17055; box-shadow: 0 0 6px #e17055; }
+
+    /* 按钮 */
+    .btn {
+      padding: 7px 14px;
+      border-radius: 8px;
+      border: none;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+    }
+    .btn:hover { transform: translateY(-1px); }
+    .btn:active { transform: scale(0.97); }
+    .btn-sm { padding: 5px 10px; font-size: 11px; }
+    .btn-primary {
+      background: linear-gradient(135deg, #7b68ee, #6c5ce7);
+      color: white;
+    }
+    .btn-success {
+      background: linear-gradient(135deg, #00b894, #00cec9);
+      color: white;
+    }
+    .btn-danger {
+      background: linear-gradient(135deg, #e17055, #d63031);
+      color: white;
+    }
+    .btn-outline {
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.15);
+      color: #aaa;
+    }
+    .btn-outline:hover {
+      border-color: #7b68ee;
+      color: #7b68ee;
+    }
+    .btn-add {
+      background: rgba(123,104,238,0.15);
+      border: 1px dashed rgba(123,104,238,0.4);
+      color: #7b68ee;
+      width: 100%;
+      padding: 8px;
+      margin-top: 4px;
+    }
+    .btn-remove {
+      background: rgba(225,112,85,0.15);
+      border: 1px solid rgba(225,112,85,0.3);
+      color: #e17055;
+      padding: 5px 8px;
+      font-size: 14px;
+      line-height: 1;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    /* 微信开关 */
+    .weixin-control {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .toggle {
+      position: relative;
+      width: 44px;
+      height: 24px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background 0.3s;
+      flex-shrink: 0;
+    }
+    .toggle.active {
+      background: linear-gradient(135deg, #07c160, #06ad56);
+    }
+    .toggle::after {
+      content: '';
+      position: absolute;
+      left: 3px;
+      top: 3px;
+      width: 18px;
+      height: 18px;
+      background: white;
+      border-radius: 50%;
+      transition: transform 0.3s;
+    }
+    .toggle.active::after {
+      transform: translateX(20px);
+    }
+
+    .weixin-tip {
+      margin-top: 12px;
+      background: rgba(7,193,96,0.08);
+      border: 1px solid rgba(7,193,96,0.15);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 11px;
+      color: #aaa;
+      line-height: 1.8;
+    }
+    .weixin-tip .step {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin: 4px 0;
+    }
+    .weixin-tip .step-num {
+      background: rgba(7,193,96,0.2);
+      color: #07c160;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    /* 统计栏 */
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .stat-item {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 10px;
+      padding: 10px;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 22px;
+      font-weight: 700;
+      color: #7b68ee;
+    }
+    .stat-label {
+      font-size: 11px;
+      color: #666;
+      margin-top: 2px;
+    }
+
+    /* 过滤栏 */
+    .filter-bar {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      padding: 8px 12px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 10px;
+      margin-bottom: 10px;
+      font-size: 12px;
+      flex-wrap: wrap;
+    }
+    .filter-bar select, .filter-bar input {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: #e0e0e0;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 12px;
+      outline: none;
+    }
+
+    /* 弹幕列表 */
+    .danmu-list {
+      background: rgba(255,255,255,0.02);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .danmu-list-header {
+      display: grid;
+      grid-template-columns: 70px 50px 80px 100px 1fr 50px;
+      gap: 6px;
+      padding: 8px 12px;
+      background: rgba(255,255,255,0.04);
+      font-size: 11px;
+      color: #666;
+      font-weight: 600;
+    }
+    .danmu-list-body {
+      max-height: 400px;
+      overflow-y: auto;
+      padding: 4px;
+    }
+    .danmu-row {
+      display: grid;
+      grid-template-columns: 70px 50px 80px 100px 1fr 50px;
+      gap: 6px;
+      padding: 6px 8px;
+      font-size: 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.03);
+      align-items: center;
+      animation: fadeIn 0.15s ease;
+    }
+    .danmu-row:hover {
+      background: rgba(255,255,255,0.03);
+    }
+    .danmu-row .time { color: #666; font-size: 11px; }
+    .danmu-row .platform {
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 4px;
+      text-align: center;
+    }
+    .danmu-row .platform.douyin {
+      background: rgba(254,44,85,0.15);
+      color: #fe2c55;
+    }
+    .danmu-row .platform.weixin {
+      background: rgba(7,193,96,0.15);
+      color: #07c160;
+    }
+    .danmu-row .room {
+      color: #888;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .danmu-row .user {
+      color: #e94560;
+      font-weight: 500;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .danmu-row .content {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .danmu-row .type {
+      font-size: 10px;
+      text-align: center;
+      padding: 1px 4px;
+      border-radius: 3px;
+    }
+    .type-chat { background: rgba(123,104,238,0.15); color: #7b68ee; }
+    .type-gift { background: rgba(253,203,110,0.2); color: #fdcb6e; }
+    .type-enter { background: rgba(0,184,148,0.15); color: #00b894; }
+    .type-like { background: rgba(255,107,107,0.15); color: #ff6b6b; }
+    .type-follow { background: rgba(116,185,255,0.15); color: #74b9ff; }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px;
+      color: #555;
+    }
+    .empty-state .icon { font-size: 36px; margin-bottom: 8px; }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: rgba(0,0,0,0.85);
+      color: white;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 13px;
+      transition: transform 0.3s;
+      z-index: 9999;
+    }
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* 滚动条 */
+    .danmu-list-body::-webkit-scrollbar { width: 6px; }
+    .danmu-list-body::-webkit-scrollbar-track { background: transparent; }
+    .danmu-list-body::-webkit-scrollbar-thumb {
+      background: rgba(255,255,255,0.1);
+      border-radius: 3px;
+    }
+
+    /* 保存类型多选标签 */
+    .save-types {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 10px;
+      padding: 10px 14px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 10px;
+    }
+    .save-types-label {
+      font-size: 12px;
+      color: #888;
+      margin-right: 4px;
+      white-space: nowrap;
+    }
+    .type-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 12px;
+      border-radius: 16px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      user-select: none;
+      border: 1.5px solid transparent;
+      opacity: 0.4;
+    }
+    .type-tag.active {
+      opacity: 1;
+    }
+    .type-tag .tag-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+    }
+    .type-tag[data-type="chat"] { background: rgba(123,104,238,0.1); color: #7b68ee; border-color: rgba(123,104,238,0.3); }
+    .type-tag[data-type="chat"] .tag-dot { background: #7b68ee; }
+    .type-tag[data-type="chat"].active { background: rgba(123,104,238,0.25); border-color: #7b68ee; }
+    .type-tag[data-type="gift"] { background: rgba(253,203,110,0.1); color: #fdcb6e; border-color: rgba(253,203,110,0.3); }
+    .type-tag[data-type="gift"] .tag-dot { background: #fdcb6e; }
+    .type-tag[data-type="gift"].active { background: rgba(253,203,110,0.25); border-color: #fdcb6e; }
+    .type-tag[data-type="like"] { background: rgba(255,107,107,0.1); color: #ff6b6b; border-color: rgba(255,107,107,0.3); }
+    .type-tag[data-type="like"] .tag-dot { background: #ff6b6b; }
+    .type-tag[data-type="like"].active { background: rgba(255,107,107,0.25); border-color: #ff6b6b; }
+    .type-tag[data-type="enter"] { background: rgba(0,184,148,0.1); color: #00b894; border-color: rgba(0,184,148,0.3); }
+    .type-tag[data-type="enter"] .tag-dot { background: #00b894; }
+    .type-tag[data-type="enter"].active { background: rgba(0,184,148,0.25); border-color: #00b894; }
+    .type-tag[data-type="follow"] { background: rgba(116,185,255,0.1); color: #74b9ff; border-color: rgba(116,185,255,0.3); }
+    .type-tag[data-type="follow"] .tag-dot { background: #74b9ff; }
+    .type-tag[data-type="follow"].active { background: rgba(116,185,255,0.25); border-color: #74b9ff; }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>💾 弹幕保存 - 多直播间监控</h1>
+      <p>抖音弹幕由 <a href="https://github.com/jwwsjlm/douyinLive" target="_blank" style="color:#7b68ee;text-decoration:none;">jwwsjlm/douyinLive</a> 开源项目提供 (MIT) · 直播间地址自动保存</p>
+    </div>
+
+    <!-- 抖音多直播间 - 基于 douyinLive -->
+    <div class="platform-section">
+      <div class="platform-title">
+        <div class="icon douyin">🎵</div>
+        <span>抖音多直播间监听</span>
+        <span style="font-size:10px;color:#888;margin-left:auto;">Powered by <a href="https://github.com/jwwsjlm/douyinLive" target="_blank" style="color:#7b68ee;">douyinLive</a></span>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;font-size:11px;color:#666;">
+        <span>🔗 WS服务: <strong id="wsServiceStatus" style="color:#e17055;">未连接</strong></span>
+        <span style="margin-left:auto;">ws://127.0.0.1:1088/ws/{roomId}</span>
+      </div>
+      <div class="room-list" id="douyinRoomList">
+        <div class="room-row" data-room-index="0">
+          <div class="room-status" id="roomStatus0"></div>
+          <input class="room-input" type="text" placeholder="输入抖音直播间地址或房间ID，如: https://live.douyin.com/123456" data-index="0">
+          <button class="btn btn-remove btn-sm" onclick="removeRoom(0)" title="删除">×</button>
+        </div>
+      </div>
+      <button class="btn btn-add" onclick="addDouyinRoom()">+ 添加直播间</button>
+      <div class="btn-group">
+        <button class="btn btn-success" onclick="startAllDouyinRooms()">▶ 开始监听</button>
+        <button class="btn btn-danger" onclick="stopAllDouyinRooms()">⏹ 停止监听</button>
+      </div>
+    </div>
+
+    <!-- 微信视频号 -->
+    <div class="platform-section">
+      <div class="platform-title">
+        <div class="icon weixin">📺</div>
+        <span>微信视频号弹幕监听</span>
+        <span style="font-size:10px;color:#888;margin-left:auto;">参考 <a href="https://github.com/ltaoo/wx_channels_download" target="_blank" style="color:#74b9ff;">wx_channels_download</a></span>
+      </div>
+      <div class="weixin-control">
+        <div class="toggle" id="toggleWeixin" onclick="toggleWeixinMonitor()"></div>
+        <span style="font-size:13px;">启用视频号弹幕监听</span>
+        <span id="weixinSnifferStatus" style="font-size:11px;color:#666;margin-left:8px;"></span>
+      </div>
+      <p style="font-size:10px;color:#555;margin-top:6px;">ℹ️ 此服务独立于主页面的视频号服务，不会影响木鱼功能</p>
+      <div class="weixin-tip">
+        <strong>📌 使用说明：</strong>
+        <div class="step">
+          <span class="step-num">1</span>
+          <span>打开此开关后，会自动设置系统代理并在微信视频号页面注入弹幕捕获脚本</span>
+        </div>
+        <div class="step">
+          <span class="step-num">2</span>
+          <span>在 <strong>微信电脑版</strong> 中打开左侧的 <strong>「视频号」</strong> 图标</span>
+        </div>
+        <div class="step">
+          <span class="step-num">3</span>
+          <span>进入任意直播间观看，弹幕会自动被拦截并显示在下方列表中</span>
+        </div>
+        <div class="step">
+          <span class="step-num">4</span>
+          <span style="color:#fdcb6e;">⚠️ 首次使用需要以管理员身份运行（安装证书），关闭后会自动恢复系统代理</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 统计栏 -->
+    <div class="stats-bar">
+      <div class="stat-item">
+        <div class="stat-value" id="totalCount">0</div>
+        <div class="stat-label">总弹幕</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" id="chatCount">0</div>
+        <div class="stat-label">评论</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" id="giftCount">0</div>
+        <div class="stat-label">礼物</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" id="enterCount">0</div>
+        <div class="stat-label">进场</div>
+      </div>
+    </div>
+
+    <!-- 保存类型筛选 -->
+    <div class="save-types">
+      <span class="save-types-label">📌 保存类型:</span>
+      <div class="type-tag active" data-type="chat" onclick="toggleSaveType(this)"><span class="tag-dot"></span>评论</div>
+      <div class="type-tag active" data-type="gift" onclick="toggleSaveType(this)"><span class="tag-dot"></span>礼物</div>
+      <div class="type-tag active" data-type="like" onclick="toggleSaveType(this)"><span class="tag-dot"></span>点赞</div>
+      <div class="type-tag" data-type="enter" onclick="toggleSaveType(this)"><span class="tag-dot"></span>进场</div>
+      <div class="type-tag" data-type="follow" onclick="toggleSaveType(this)"><span class="tag-dot"></span>关注</div>
+      <span style="margin-left:auto;font-size:10px;color:#555;">仅勾选的类型会被保存</span>
+    </div>
+
+    <!-- 过滤与导出 -->
+    <div class="filter-bar">
+      <label>平台: <select id="filterPlatform"><option value="all">全部</option><option value="douyin">抖音</option><option value="weixin">视频号</option></select></label>
+      <label>搜索: <input type="text" id="filterKeyword" placeholder="用户名/内容" style="width:100px"></label>
+      <div style="margin-left:auto;display:flex;gap:6px;">
+        <button class="btn btn-outline btn-sm" onclick="clearDanmu()">🗑️ 清空</button>
+        <button class="btn btn-success btn-sm" onclick="exportDanmu('csv')">📄 CSV</button>
+        <button class="btn btn-primary btn-sm" onclick="exportDanmu('json')">📋 JSON</button>
+        <button class="btn btn-outline btn-sm" onclick="exportDanmu('txt')">📝 TXT</button>
+      </div>
+    </div>
+
+    <!-- 弹幕列表 -->
+    <div class="danmu-list">
+      <div class="danmu-list-header">
+        <span>时间</span>
+        <span>平台</span>
+        <span>房间</span>
+        <span>用户</span>
+        <span>内容</span>
+        <span>类型</span>
+      </div>
+      <div class="danmu-list-body" id="danmuBody">
+        <div class="empty-state">
+          <div class="icon">📡</div>
+          <p>添加直播间并开始监听</p>
+          <p style="font-size:11px;margin-top:4px;color:#333">弹幕将实时显示在这里</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ============================================================
+    // 抖音弹幕数据来源: jwwsjlm/douyinLive 开源项目
+    // GitHub: https://github.com/jwwsjlm/douyinLive
+    // 协议: MIT License
+    // WS 服务地址: ws://127.0.0.1:1088/ws/{roomId}
+    // 消息格式: JSON，通过 method 字段区分类型
+    // ============================================================
+
+    // ============ 状态管理 ============
+    const DOUYINLIVE_WS_BASE = 'ws://127.0.0.1:1088/ws/';
+    const STORAGE_KEY_ROOMS = 'danmu-save-douyin-rooms';
+    let allDanmu = [];
+    let roomCounter = 1;
+    let weixinMonitoring = false;
+    let stats = { total: 0, chat: 0, gift: 0, enter: 0, like: 0 };
+    let roomConnections = {};
+
+    // ============ 自动保存/加载直播间 ============
+    function saveRoomsToStorage() {
+      const inputs = document.querySelectorAll('#douyinRoomList .room-input');
+      const rooms = [];
+      inputs.forEach(input => {
+        const val = input.value.trim();
+        if (val) rooms.push(val);
+      });
+      try { localStorage.setItem(STORAGE_KEY_ROOMS, JSON.stringify(rooms)); } catch(e) {}
+    }
+
+    function loadRoomsFromStorage() {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY_ROOMS);
+        if (!saved) return;
+        const rooms = JSON.parse(saved);
+        if (!Array.isArray(rooms) || rooms.length === 0) return;
+        const firstInput = document.querySelector('#douyinRoomList .room-input[data-index="0"]');
+        if (firstInput && rooms[0]) firstInput.value = rooms[0];
+        for (let i = 1; i < rooms.length; i++) {
+          addDouyinRoom(rooms[i]);
+        }
+      } catch(e) {}
+    }
+
+    // ============ 抖音多直播间 ============
+    function addDouyinRoom(prefill) {
+      const list = document.getElementById('douyinRoomList');
+      const index = roomCounter++;
+      const row = document.createElement('div');
+      row.className = 'room-row';
+      row.dataset.roomIndex = index;
+      row.innerHTML = `
+        <div class="room-status" id="roomStatus${index}"></div>
+        <input class="room-input" type="text" placeholder="输入抖音直播间地址或房间ID" data-index="${index}" value="${prefill || ''}">
+        <button class="btn btn-remove btn-sm" onclick="removeRoom(${index})" title="删除">×</button>
+      `;
+      list.appendChild(row);
+      row.querySelector('.room-input').addEventListener('change', saveRoomsToStorage);
+    }
+
+    function removeRoom(index) {
+      const row = document.querySelector(`.room-row[data-room-index="${index}"]`);
+      if (row) {
+        const input = row.querySelector('.room-input');
+        if (input) {
+          const roomId = extractRoomId(input.value);
+          if (roomId && roomConnections[roomId]) {
+            roomConnections[roomId].onclose = null;
+            roomConnections[roomId].close();
+            delete roomConnections[roomId];
+          }
+        }
+        row.style.animation = 'fadeOut 0.2s ease';
+        setTimeout(() => { row.remove(); saveRoomsToStorage(); }, 200);
+      }
+    }
+
+    function extractRoomId(val) {
+      if (!val) return '';
+      val = val.trim();
+      const match = val.match(/live\.douyin\.com\/([\w]+)/);
+      if (match) return match[1];
+      if (/^\d+$/.test(val)) return val;
+      return val;
+    }
+
+    // ============ WebSocket 连接 (douyinLive) ============
+    function connectRoom(roomId, statusDotId) {
+      if (roomConnections[roomId]) {
+        roomConnections[roomId].onclose = null;
+        roomConnections[roomId].close();
+      }
+
+      const url = DOUYINLIVE_WS_BASE + roomId;
+      const dot = document.getElementById(statusDotId);
+      if (dot) dot.className = 'room-status connecting';
+
+      let ws;
+      try { ws = new WebSocket(url); } catch(e) {
+        if (dot) dot.className = 'room-status error';
+        return;
+      }
+      roomConnections[roomId] = ws;
+
+      ws.onopen = function() {
+        if (dot) dot.className = 'room-status connected';
+        console.log(`[DanmuSave] 已连接直播间: ${roomId}`);
+        updateServiceStatus();
+        ws._pingTimer = setInterval(() => {
+          if (ws.readyState === WebSocket.OPEN) ws.send('ping');
+        }, 30000);
+      };
+
+      ws.onmessage = function(event) {
+        if (event.data === 'pong') return;
+        try {
+          const data = JSON.parse(event.data);
+          handleDouyinLiveMessage(data, roomId);
+        } catch(e) {}
+      };
+
+      ws.onclose = function(e) {
+        if (ws._pingTimer) clearInterval(ws._pingTimer);
+        if (dot) dot.className = 'room-status error';
+        delete roomConnections[roomId];
+        updateServiceStatus();
+        if (!e.wasClean) {
+          setTimeout(() => {
+            if (!roomConnections[roomId]) connectRoom(roomId, statusDotId);
+          }, 5000);
+        }
+      };
+
+      ws.onerror = function() {
+        if (dot) dot.className = 'room-status error';
+      };
+    }
+
+    // douyinLive 消息解析
+    // 实际格式: { common: { method: "WebcastChatMessage" }, user: { nickname: "xxx" }, content: "xxx", livename: "xxx" }
+    function handleDouyinLiveMessage(data, roomId) {
+      // method 在 common 对象中
+      const method = (data.common && data.common.method) || data.method || '';
+      const user = data.user || {};
+      const nickname = user.nickname || user.Nickname || '未知用户';
+      let msgType = 'chat';
+      let content = '';
+
+      if (method === 'WebcastChatMessage') {
+        msgType = 'chat';
+        content = data.content || '';
+      } else if (method === 'WebcastGiftMessage') {
+        msgType = 'gift';
+        const gift = data.gift || {};
+        content = `送出 ${gift.name || data.giftName || '礼物'} x${data.repeatCount || data.comboCount || 1}`;
+      } else if (method === 'WebcastLikeMessage') {
+        msgType = 'like';
+        content = `点赞 x${data.count || 1}`;
+      } else if (method === 'WebcastMemberMessage') {
+        msgType = 'enter';
+        content = '进入直播间';
+      } else if (method === 'WebcastSocialMessage') {
+        msgType = 'follow';
+        content = '关注了主播';
+      } else if (method === 'WebcastFansclubMessage') {
+        msgType = 'fansclub';
+        content = '粉丝团消息';
+      } else {
+        return;
+      }
+
+      addDanmu({
+        platform: 'douyin',
+        msgType: msgType,
+        username: nickname,
+        content: content,
+        roomId: data.livename || roomId
+      });
+    }
+
+    function startAllDouyinRooms() {
+      saveRoomsToStorage();
+      const inputs = document.querySelectorAll('#douyinRoomList .room-input');
+      let count = 0;
+      inputs.forEach(input => {
+        const roomId = extractRoomId(input.value);
+        if (!roomId) return;
+        const idx = input.dataset.index;
+        connectRoom(roomId, `roomStatus${idx}`);
+        count++;
+      });
+      if (count === 0) {
+        showToast('请至少输入一个抖音直播间地址');
+      } else {
+        showToast(`正在连接 ${count} 个直播间...`);
+      }
+    }
+
+    function stopAllDouyinRooms() {
+      Object.keys(roomConnections).forEach(roomId => {
+        const ws = roomConnections[roomId];
+        if (ws) { if (ws._pingTimer) clearInterval(ws._pingTimer); ws.onclose = null; ws.close(); }
+      });
+      roomConnections = {};
+      document.querySelectorAll('.room-status').forEach(s => s.className = 'room-status');
+      updateServiceStatus();
+      showToast('已停止所有直播间监听');
+    }
+
+    function updateServiceStatus() {
+      const el = document.getElementById('wsServiceStatus');
+      const activeCount = Object.keys(roomConnections).length;
+      if (activeCount > 0) {
+        el.style.color = '#00b894';
+        el.textContent = `已连接 ${activeCount} 个房间`;
+      } else {
+        el.style.color = '#e17055';
+        el.textContent = '未连接';
+      }
+    }
+
+    // ============ 微信视频号 ============
+    function toggleWeixinMonitor() {
+      const toggle = document.getElementById('toggleWeixin');
+      toggle.classList.toggle('active');
+      weixinMonitoring = toggle.classList.contains('active');
+      if (weixinMonitoring) {
+        sendToBackend({ type: 'startWeixinSniffer' });
+        showToast('视频号拦截已开启（独立于木鱼服务）');
+        updateWeixinStatus('starting', '启动中...');
+      } else {
+        sendToBackend({ type: 'stopWeixinSniffer' });
+        showToast('视频号拦截已关闭');
+        updateWeixinStatus('stopped', '已停止');
+      }
+    }
+
+    function updateWeixinStatus(status, text) {
+      const el = document.getElementById('weixinSnifferStatus');
+      if (!el) return;
+      el.textContent = text;
+      if (status === 'running') { el.style.color = '#00b894'; }
+      else if (status === 'error') { el.style.color = '#e17055'; }
+      else if (status === 'starting') { el.style.color = '#fdcb6e'; }
+      else { el.style.color = '#666'; }
+    }
+
+    // C# 后端推送状态更新
+    window.onHostStatus = function(type, status, text) {
+      if (type === 'weixin-sniffer-status') {
+        updateWeixinStatus(status, text);
+      }
+    };
+
+    // ============ 后端通信 ============
+    function sendToBackend(msg) {
+      if (window.chrome && window.chrome.webview) {
+        window.chrome.webview.postMessage(JSON.stringify(msg));
+      } else if (window.opener && window.opener.postToBackend) {
+        window.opener.postToBackend(msg);
+      }
+    }
+
+    // 视频号弹幕从 C# 推过来
+    window.addEventListener('message', function(event) {
+      if (event.data && event.data.type === 'danmu-message') addDanmu(event.data.message);
+    });
+    window.onDanmuSaveMessage = function(msg) { addDanmu(msg); };
+    window.onHostMessage = function(data) {
+      if (data && data.type === 'danmaku') {
+        addDanmu({ platform: data.platform || 'douyin', msgType: data.msgType || 'chat', username: data.user || '', content: data.content || '' });
+      }
+    };
+
+    // ============ 保存类型控制 ============
+    function getActiveSaveTypes() {
+      const tags = document.querySelectorAll('.type-tag.active');
+      return Array.from(tags).map(t => t.dataset.type);
+    }
+
+    function toggleSaveType(el) {
+      el.classList.toggle('active');
+      // 至少保留一个
+      if (getActiveSaveTypes().length === 0) {
+        el.classList.add('active');
+        showToast('至少保留一种保存类型');
+      }
+      renderDanmu();
+    }
+
+    // ============ 弹幕处理 ============
+    function addDanmu(msg) {
+      if (!msg) return;
+      const item = {
+        time: new Date().toLocaleTimeString('zh-CN', { hour12: false }),
+        timestamp: Date.now(),
+        platform: msg.platform || 'unknown',
+        room: msg.roomId || msg.room || '',
+        user: msg.username || msg.user || '未知',
+        content: msg.content || '',
+        type: msg.msgType || msg.type || 'chat'
+      };
+
+      // 检查是否在保存类型中
+      const saveTypes = getActiveSaveTypes();
+      if (!saveTypes.includes(item.type)) return; // 不在保存类型中，直接丢弃
+
+      allDanmu.push(item);
+      stats.total++;
+      if (item.type === 'chat') stats.chat++;
+      else if (item.type === 'gift') stats.gift++;
+      else if (item.type === 'enter') stats.enter++;
+      else if (item.type === 'like') stats.like++;
+      updateStats();
+      appendDanmuRow(item);
+    }
+
+    function updateStats() {
+      document.getElementById('totalCount').textContent = stats.total;
+      document.getElementById('chatCount').textContent = stats.chat;
+      document.getElementById('giftCount').textContent = stats.gift;
+      document.getElementById('enterCount').textContent = stats.enter;
+    }
+
+    function appendDanmuRow(item) {
+      const body = document.getElementById('danmuBody');
+      const emptyState = body.querySelector('.empty-state');
+      if (emptyState) emptyState.remove();
+      if (!matchesFilter(item)) return;
+
+      const row = document.createElement('div');
+      row.className = 'danmu-row';
+      const platformClass = item.platform.includes('douyin') ? 'douyin' : item.platform.includes('weixin') ? 'weixin' : '';
+      const platformName = item.platform.includes('douyin') ? '抖音' : item.platform.includes('weixin') ? '视频号' : item.platform;
+      const typeClass = `type-${item.type}`;
+      const typeName = { chat:'评论', gift:'礼物', enter:'进场', like:'点赞', follow:'关注' }[item.type] || item.type;
+
+      row.innerHTML = `
+        <span class="time">${item.time}</span>
+        <span class="platform ${platformClass}">${platformName}</span>
+        <span class="room" title="${escapeHtml(item.room)}">${escapeHtml(item.room || '-')}</span>
+        <span class="user" title="${escapeHtml(item.user)}">${escapeHtml(item.user)}</span>
+        <span class="content">${escapeHtml(item.content)}</span>
+        <span class="type ${typeClass}">${typeName}</span>
+      `;
+      body.appendChild(row);
+      while (body.children.length > 5000) body.removeChild(body.firstChild);
+      body.scrollTop = body.scrollHeight;
+    }
+
+    function matchesFilter(item) {
+      const platform = document.getElementById('filterPlatform').value;
+      const keyword = document.getElementById('filterKeyword').value.toLowerCase();
+      if (platform !== 'all' && !item.platform.includes(platform)) return false;
+      if (keyword && !item.user.toLowerCase().includes(keyword) && !item.content.toLowerCase().includes(keyword)) return false;
+      return true;
+    }
+
+    document.getElementById('filterPlatform').addEventListener('change', renderDanmu);
+    document.getElementById('filterKeyword').addEventListener('input', renderDanmu);
+
+    function renderDanmu() {
+      const body = document.getElementById('danmuBody');
+      body.innerHTML = '';
+      allDanmu.forEach(item => { if (matchesFilter(item)) appendDanmuRow(item); });
+    }
+
+    function clearDanmu() {
+      if (!confirm('确定清空所有弹幕记录？')) return;
+      allDanmu = [];
+      stats = { total: 0, chat: 0, gift: 0, enter: 0, like: 0 };
+      updateStats();
+      document.getElementById('danmuBody').innerHTML = '<div class="empty-state"><div class="icon">📡</div><p>已清空</p></div>';
+      showToast('已清空');
+    }
+
+    function exportDanmu(format) {
+      if (allDanmu.length === 0) { showToast('没有数据'); return; }
+      let content, filename, mimeType;
+      const now = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      if (format === 'csv') {
+        const header = '时间,平台,房间,用户,内容,类型\n';
+        const rows = allDanmu.map(d => `"${d.time}","${d.platform}","${d.room}","${d.user}","${d.content.replace(/"/g,'""')}","${d.type}"`).join('\n');
+        content = '\ufeff' + header + rows;
+        filename = `弹幕记录_${now}.csv`;
+        mimeType = 'text/csv;charset=utf-8';
+      } else if (format === 'json') {
+        content = JSON.stringify(allDanmu, null, 2);
+        filename = `弹幕记录_${now}.json`;
+        mimeType = 'application/json;charset=utf-8';
+      } else {
+        content = allDanmu.map(d => `[${d.time}] [${d.platform}] [${d.room}] ${d.user}: ${d.content} (${d.type})`).join('\n');
+        filename = `弹幕记录_${now}.txt`;
+        mimeType = 'text/plain;charset=utf-8';
+      }
+      const blob = new Blob([content], { type: mimeType });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      showToast(`已导出 ${allDanmu.length} 条 (${format.toUpperCase()})`);
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2500);
+    }
+
+    // 页面关闭时断开所有 WS
+    window.addEventListener('beforeunload', () => stopAllDouyinRooms());
+    // 绑定第一个输入框的自动保存
+    document.querySelector('#douyinRoomList .room-input[data-index="0"]')?.addEventListener('change', saveRoomsToStorage);
+    // 页面加载时恢复上次保存的直播间
+    loadRoomsFromStorage();
+  </script>
+
+  <style>
+    @keyframes fadeOut {
+      from { opacity: 1; transform: translateY(0); }
+      to { opacity: 0; transform: translateY(-8px); }
+    }
+  </style>
+</body>
+</html>

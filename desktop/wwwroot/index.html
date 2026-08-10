@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>直播弹幕助手</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="titlebar" id="titlebar">
+    <div class="brand"><span class="brand-mark">D</span><span>直播弹幕助手</span><small>Lite</small></div>
+    <div class="window-actions">
+      <button data-window="minimize" aria-label="最小化"><span class="win-icon minimize-icon"></span></button>
+      <button data-window="maximize" aria-label="最大化"><span class="win-icon maximize-icon"></span></button>
+      <button data-window="close" aria-label="关闭"><span class="win-icon close-icon"></span></button>
+    </div>
+  </header>
+
+  <main class="shell">
+    <aside class="control-panel">
+      <div class="panel-heading">
+        <p class="eyebrow">CONNECTION</p>
+        <h2>直播连接</h2>
+      </div>
+      <form id="connect-form" novalidate>
+        <label for="room-url">抖音直播间地址</label>
+        <div class="input-wrap">
+          <input id="room-url" type="url" placeholder="https://live.douyin.com/123456" autocomplete="off" spellcheck="false">
+          <span class="input-icon" aria-hidden="true">↗</span>
+        </div>
+        <div class="platform-row">
+          <span>抖音账号</span><button class="text-button" id="login-button" type="button">登录抖音</button>
+        </div>
+        <label for="weixin-room">视频号直播间</label>
+        <div class="input-wrap">
+          <input id="weixin-room" type="text" placeholder="视频号名称或直播间标识" autocomplete="off">
+          <span class="input-icon" aria-hidden="true">↗</span>
+        </div>
+        <div class="platform-row">
+          <span>视频号账号</span><button class="text-button" id="weixin-login-button" type="button">微信扫码登录</button>
+        </div>
+        <p class="helper" id="form-message">至少填写一个平台；两个平台可同时连接并合流显示。</p>
+        <div class="form-actions">
+          <button class="primary" id="connect-button" type="submit">连接直播间</button>
+          <button class="secondary" id="disconnect-button" type="button" disabled>断开</button>
+        </div>
+      </form>
+
+      <details class="feature-menu" open>
+        <summary>工具与显示</summary>
+        <div class="submenu">
+          <button id="pop-danmaku-button" class="menu-action" type="button">独立弹幕窗口</button>
+          <label for="page-opacity">主窗口透明度 <output id="opacity-value">100%</output></label>
+          <input id="page-opacity" type="range" min="35" max="100" value="100">
+        </div>
+      </details>
+
+      <details class="feature-menu" open>
+        <summary>敲鼓设置</summary>
+        <div class="submenu">
+          <button id="show-drum-settings" class="menu-action" type="button">打开敲鼓设置</button>
+        </div>
+      </details>
+
+      <div class="connection-summary">
+        <div><span class="status-dot" id="status-dot"></span><span id="status-text">尚未连接</span></div>
+        <span id="platform-status">抖音 / 视频号</span>
+      </div>
+    </aside>
+
+    <section class="stream-panel" id="stream-panel">
+      <div class="drum-settings-view" id="drum-settings-view" hidden>
+        <div class="settings-heading">
+          <div><p class="eyebrow">DRUM SETTINGS</p><h2>敲鼓设置</h2></div>
+          <div class="settings-top-actions"><button id="save-drum-button" class="menu-action primary-small" type="button">保存设置</button><button id="open-drum-button" class="menu-action" type="button">单独显示敲鼓</button><button id="close-drum-settings" class="icon-button" type="button">返回弹幕</button></div>
+        </div>
+        <div class="platform-tabs" role="tablist" aria-label="敲鼓设置平台">
+          <button class="platform-tab active" data-drum-platform="douyin" type="button">抖音设置</button>
+          <button class="platform-tab" data-drum-platform="weixin" type="button">视频号设置</button>
+        </div>
+        <div class="settings-form comprehensive-settings">
+          <fieldset>
+            <legend>触发条件</legend>
+            <div class="choice-row">
+              <label><input id="trigger-gift" type="checkbox" checked> 礼物</label>
+              <label><input id="trigger-chat" type="checkbox"> 弹幕</label>
+              <label><input id="trigger-like" type="checkbox"> 点赞</label>
+            </div>
+          </fieldset>
+          <div class="settings-grid">
+            <div class="field-block">
+              <label for="gift-select">礼物选择</label>
+              <select id="gift-select"><option value="all">全部礼物</option></select>
+            </div>
+            <div class="field-block">
+              <label for="gift-rate">礼物倍率</label>
+              <div class="number-stepper"><button id="gift-rate-minus" type="button">−</button><input id="gift-rate" type="number" min="1" max="50" value="1"><button id="gift-rate-plus" type="button">+</button></div>
+            </div>
+          </div>
+          <div class="field-block">
+            <label for="drum-text">描述文本</label>
+            <input id="drum-text" type="text" value="功德" maxlength="20">
+          </div>
+          <div class="field-block">
+            <label for="bubble-text">冒泡文字</label>
+            <input id="bubble-text" type="text" value="{用户}{文本}" maxlength="60">
+            <div class="token-row"><button type="button" data-token="{用户}">{用户}</button><button type="button" data-token="{文本}">{文本}</button><button type="button" data-token="{礼物}">{礼物}</button><button type="button" data-token="{数量}">{数量}</button></div>
+          </div>
+          <div class="settings-grid">
+            <fieldset><legend>文字层级</legend><div class="choice-column"><label><input name="text-layer" type="radio" value="above" checked> 图片上层</label><label><input name="text-layer" type="radio" value="below"> 图片下层</label></div></fieldset>
+            <fieldset><legend>模式选择</legend><div class="choice-column"><label><input name="gift-mode" type="radio" value="separate" checked> 礼物分离</label><label><input name="gift-mode" type="radio" value="merge"> 礼物合并</label></div></fieldset>
+          </div>
+          <div class="settings-grid color-grid">
+            <label for="text-color">文字颜色 <input id="text-color" type="color" value="#ffffff"></label>
+            <label for="number-color">数字颜色 <input id="number-color" type="color" value="#d65a4a"></label>
+          </div>
+          <div class="field-block">
+            <label for="drum-image">自定义鼓图片</label>
+            <input id="drum-image" type="file" accept="image/png,image/jpeg,image/webp">
+            <p>支持 PNG、JPEG、WebP，文件不超过 3 MB。图片仅应用到当前选择的平台。</p>
+          </div>
+        </div>
+      </div>
+      <div class="stream-content" id="stream-content">
+      <div class="stream-header">
+        <div>
+          <p class="eyebrow">LIVE STREAM</p>
+          <h2>实时消息</h2>
+        </div>
+        <div class="metrics">
+          <div><strong id="viewer-count">0</strong><span>在线</span></div>
+          <div><strong id="message-count">0</strong><span>消息</span></div>
+          <div><strong id="gift-count">0</strong><span>礼物</span></div>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <div class="filters" role="group" aria-label="消息筛选">
+          <button class="filter active" data-filter="all" type="button">全部</button>
+          <button class="filter" data-filter="chat" type="button">弹幕</button>
+          <button class="filter" data-filter="gift" type="button">礼物</button>
+          <button class="filter" data-filter="like" type="button">点赞</button>
+          <button class="filter" data-filter="member" type="button">进场</button>
+        </div>
+        <div class="tools">
+          <button id="pause-button" class="icon-button" type="button">暂停滚动</button>
+          <button id="export-button" class="icon-button" type="button">导出</button>
+          <button id="clear-button" class="icon-button" type="button">清空</button>
+        </div>
+      </div>
+
+      <div class="message-list" id="message-list" aria-live="polite">
+        <div class="empty-state" id="empty-state">
+          <div class="empty-symbol"><span></span><span></span><span></span></div>
+          <h3>等待直播间消息</h3>
+          <p>连接成功后，实时互动会出现在这里。</p>
+        </div>
+      </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status"></div>
+  <script src="app.js"></script>
+</body>
+</html>

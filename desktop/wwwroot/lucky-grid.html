@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>幸运九宫格</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap');
+
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      font-family:'Outfit','Microsoft YaHei',sans-serif;
+      background:transparent;
+      display:flex; justify-content:center; align-items:center;
+      min-height:100vh; overflow:hidden;
+      user-select:none;
+    }
+
+    .lottery-container {
+      position:relative;
+      width:460px; height:460px;
+      perspective:1200px;
+    }
+
+    /* ===== 九宫格 ===== */
+    .grid-wrap {
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      grid-template-rows:repeat(3,1fr);
+      gap:8px;
+      width:100%; height:100%;
+      padding:16px;
+      background:linear-gradient(135deg,rgba(15,15,40,.92),rgba(30,15,60,.92));
+      border-radius:20px;
+      border:2px solid rgba(255,215,0,.25);
+      box-shadow:0 0 60px rgba(233,69,96,.15), 0 0 120px rgba(83,52,131,.15);
+    }
+
+    .grid-cell {
+      position:relative;
+      display:flex; flex-direction:column;
+      align-items:center; justify-content:center;
+      background:linear-gradient(145deg,rgba(40,30,80,.7),rgba(25,20,55,.9));
+      border-radius:14px;
+      border:2px solid rgba(255,255,255,.08);
+      cursor:pointer;
+      transition:all .3s ease;
+      overflow:hidden;
+    }
+    .grid-cell::before {
+      content:'';
+      position:absolute; inset:0;
+      border-radius:14px;
+      background:linear-gradient(135deg,rgba(255,215,0,.0),rgba(233,69,96,.0));
+      transition:all .3s ease;
+    }
+    .grid-cell:hover::before {
+      background:linear-gradient(135deg,rgba(255,215,0,.08),rgba(233,69,96,.08));
+    }
+    .grid-cell.highlight {
+      border-color:rgba(255,215,0,.8)!important;
+      box-shadow:0 0 20px rgba(255,215,0,.3), inset 0 0 20px rgba(255,215,0,.1);
+    }
+    .grid-cell.highlight::before {
+      background:linear-gradient(135deg,rgba(255,215,0,.15),rgba(233,69,96,.1))!important;
+    }
+    .grid-cell.winner {
+      border-color:#ffd700!important;
+      box-shadow:0 0 40px rgba(255,215,0,.5), inset 0 0 30px rgba(255,215,0,.2);
+      animation:winnerPulse 1s ease infinite;
+    }
+    @keyframes winnerPulse {
+      0%,100% { box-shadow:0 0 40px rgba(255,215,0,.5); }
+      50% { box-shadow:0 0 60px rgba(255,215,0,.8); }
+    }
+
+    /* 中心按钮 */
+    .grid-cell.center-btn {
+      background:linear-gradient(135deg,#e94560,#c0392b);
+      border-color:rgba(255,255,255,.2);
+      cursor:pointer;
+      font-size:18px; font-weight:800; color:#fff;
+      text-shadow:0 2px 4px rgba(0,0,0,.3);
+      letter-spacing:2px;
+    }
+    .grid-cell.center-btn:hover {
+      transform:scale(1.05);
+      box-shadow:0 0 30px rgba(233,69,96,.5);
+    }
+    .grid-cell.center-btn.spinning {
+      pointer-events:none;
+      animation:centerSpin .6s ease infinite alternate;
+    }
+    @keyframes centerSpin {
+      0% { transform:scale(1); }
+      100% { transform:scale(.95); }
+    }
+
+    .cell-emoji { font-size:36px; margin-bottom:4px; filter:drop-shadow(0 2px 4px rgba(0,0,0,.3)); }
+    .cell-name { font-size:12px; font-weight:600; color:rgba(255,255,255,.85); text-align:center; line-height:1.2; }
+
+    /* ===== 触发礼物显示 ===== */
+    .trigger-gift-bar {
+      position:absolute;
+      bottom:-50px; left:50%; transform:translateX(-50%);
+      display:flex; align-items:center; gap:10px;
+      background:linear-gradient(135deg,rgba(15,15,40,.95),rgba(30,15,60,.95));
+      border:1px solid rgba(255,215,0,.2);
+      border-radius:30px;
+      padding:8px 20px;
+      white-space:nowrap;
+    }
+    .trigger-gift-bar .label { font-size:12px; color:rgba(255,255,255,.6); }
+    .trigger-gift-bar .gift-name { font-size:14px; font-weight:700; color:#ffd700; }
+
+    /* ===== 中奖弹窗 ===== */
+    .winner-overlay {
+      display:none;
+      position:fixed; inset:0;
+      background:rgba(0,0,0,.7);
+      backdrop-filter:blur(10px);
+      z-index:1000;
+      justify-content:center; align-items:center;
+    }
+    .winner-overlay.show { display:flex; }
+    .winner-card {
+      background:linear-gradient(145deg,rgba(40,20,80,.95),rgba(20,10,50,.95));
+      border:2px solid rgba(255,215,0,.4);
+      border-radius:24px;
+      padding:40px 50px;
+      text-align:center;
+      animation:winnerIn .5s ease;
+      box-shadow:0 0 80px rgba(255,215,0,.2);
+    }
+    @keyframes winnerIn {
+      0% { transform:scale(.5) rotate(-10deg); opacity:0; }
+      100% { transform:scale(1) rotate(0); opacity:1; }
+    }
+    .winner-emoji { font-size:72px; margin-bottom:16px; }
+    .winner-title { font-size:28px; font-weight:800; color:#ffd700; margin-bottom:8px; text-shadow:0 0 20px rgba(255,215,0,.5); }
+    .winner-name { font-size:18px; color:rgba(255,255,255,.8); margin-bottom:6px; }
+    .winner-user { font-size:14px; color:rgba(255,255,255,.5); margin-bottom:24px; }
+    .winner-close-btn {
+      padding:10px 30px;
+      background:linear-gradient(135deg,#e94560,#c0392b);
+      border:none; border-radius:10px;
+      color:#fff; font-size:14px; font-weight:600;
+      cursor:pointer; transition:all .2s;
+    }
+    .winner-close-btn:hover { transform:scale(1.05); box-shadow:0 0 20px rgba(233,69,96,.4); }
+
+    /* ===== 粒子效果 ===== */
+    .confetti {
+      position:fixed; pointer-events:none; z-index:1001;
+      width:8px; height:8px; border-radius:2px;
+      animation:confettiFall 2s ease forwards;
+    }
+    @keyframes confettiFall {
+      0% { transform:translateY(-20px) rotate(0deg); opacity:1; }
+      100% { transform:translateY(100vh) rotate(720deg); opacity:0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="lottery-container">
+    <div class="grid-wrap" id="gridWrap">
+      <!-- cells 0-8, center(4) is the spin button -->
+    </div>
+
+    <div class="trigger-gift-bar">
+      <span class="label">触发礼物：</span>
+      <span class="gift-name" id="triggerGiftName">任意礼物</span>
+    </div>
+  </div>
+
+  <!-- 中奖弹窗 -->
+  <div class="winner-overlay" id="winnerOverlay">
+    <div class="winner-card">
+      <div class="winner-emoji" id="winnerEmoji">🎉</div>
+      <div class="winner-title" id="winnerTitle">恭喜中奖！</div>
+      <div class="winner-name" id="winnerPrizeName">奖品名称</div>
+      <div class="winner-user" id="winnerUser">用户名</div>
+      <button class="winner-close-btn" onclick="closeWinner()">确 定</button>
+    </div>
+  </div>
+
+  <script>
+    // ===========================
+    //       幸运九宫格逻辑
+    // ===========================
+
+    // 默认奖品（可自定义）
+    let prizes = [
+      { emoji:'🎁', name:'神秘礼物' },
+      { emoji:'💎', name:'钻石 x10' },
+      { emoji:'🌹', name:'玫瑰花 x5' },
+      { emoji:'🏆', name:'冠军奖杯' },
+      { emoji:'⭐', name:'幸运星' },   // index 4 = center (skip)
+      { emoji:'🎵', name:'音符 x3' },
+      { emoji:'💰', name:'金币 x100' },
+      { emoji:'🎪', name:'马戏团票' }
+    ];
+
+    // 九宫格对应的遍历顺序 (外圈顺时针): 0,1,2,5,8,7,6,3
+    const SPIN_ORDER = [0,1,2,5,8,7,6,3];
+    const CENTER_INDEX = 4;
+
+    let isSpinning = false;
+    let triggerGiftName = '';  // 触发抽奖的礼物名称
+    let autoCloseTimer = null;
+
+    // ===== 初始化九宫格 =====
+    function renderGrid() {
+      const wrap = document.getElementById('gridWrap');
+      wrap.innerHTML = '';
+      for (let i = 0; i < 9; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'grid-cell';
+        cell.dataset.index = i;
+
+        if (i === CENTER_INDEX) {
+          cell.classList.add('center-btn');
+          cell.textContent = '开始';
+          cell.addEventListener('click', () => manualSpin());
+        } else {
+          const pIdx = i > CENTER_INDEX ? i - 1 : i;
+          const p = prizes[pIdx] || { emoji:'❓', name:'未设置' };
+          cell.innerHTML = `<div class="cell-emoji">${p.emoji}</div><div class="cell-name">${p.name}</div>`;
+        }
+        wrap.appendChild(cell);
+      }
+    }
+
+    // ===== 手动抽奖 =====
+    function manualSpin() {
+      if (isSpinning) return;
+      startSpin('手动抽奖');
+    }
+
+    // ===== 礼物触发抽奖 =====
+    function giftTriggerSpin(username, giftName) {
+      if (isSpinning) return;
+      startSpin(username, giftName);
+    }
+
+    // ===== 开始转动 =====
+    function startSpin(username, giftName) {
+      if (isSpinning) return;
+      isSpinning = true;
+
+      const cells = document.querySelectorAll('.grid-cell');
+      const centerBtn = cells[CENTER_INDEX];
+      centerBtn.classList.add('spinning');
+      centerBtn.textContent = '...';
+
+      // 清除之前的高亮
+      cells.forEach(c => { c.classList.remove('highlight','winner'); });
+
+      // 总共转 3~5 圈 + 随机位置
+      const totalSteps = SPIN_ORDER.length * (3 + Math.floor(Math.random()*3)) + Math.floor(Math.random() * SPIN_ORDER.length);
+      let step = 0;
+      let speed = 50; // 初始速度(ms)
+
+      function tick() {
+        // 清除上一个高亮
+        cells.forEach(c => c.classList.remove('highlight'));
+
+        // 当前位置
+        const posIdx = step % SPIN_ORDER.length;
+        const cellIdx = SPIN_ORDER[posIdx];
+        cells[cellIdx].classList.add('highlight');
+
+        step++;
+        if (step >= totalSteps) {
+          // 停止 — 当前cell就是中奖项
+          finishSpin(cellIdx, username);
+          return;
+        }
+
+        // 逐渐减速
+        if (step > totalSteps - 10) {
+          speed += 30;
+        } else if (step > totalSteps - 20) {
+          speed += 10;
+        }
+
+        setTimeout(tick, speed);
+      }
+
+      tick();
+    }
+
+    // ===== 停止并显示结果 =====
+    function finishSpin(winCellIndex, username) {
+      const cells = document.querySelectorAll('.grid-cell');
+      cells[winCellIndex].classList.add('winner');
+
+      const centerBtn = cells[CENTER_INDEX];
+      centerBtn.classList.remove('spinning');
+      centerBtn.textContent = '开始';
+
+      // 获取奖品信息
+      const pIdx = winCellIndex > CENTER_INDEX ? winCellIndex - 1 : winCellIndex;
+      const prize = prizes[pIdx] || { emoji:'🎁', name:'奖品' };
+
+      // 显示中奖弹窗
+      showWinner(prize, username);
+
+      // 发送结果到后端
+      if (window.chrome && window.chrome.webview) {
+        window.chrome.webview.postMessage(JSON.stringify({
+          type:'lottery-result',
+          prize: prize.name,
+          emoji: prize.emoji,
+          username: username || '手动'
+        }));
+      }
+
+      // 5秒后自动关闭
+      autoCloseTimer = setTimeout(() => {
+        closeWinner();
+      }, 5000);
+    }
+
+    // ===== 中奖弹窗 =====
+    function showWinner(prize, username) {
+      document.getElementById('winnerEmoji').textContent = prize.emoji;
+      document.getElementById('winnerTitle').textContent = '🎉 恭喜中奖！';
+      document.getElementById('winnerPrizeName').textContent = prize.name;
+      document.getElementById('winnerUser').textContent = username ? `送礼用户: ${username}` : '手动抽奖';
+      document.getElementById('winnerOverlay').classList.add('show');
+      spawnConfetti();
+    }
+
+    function closeWinner() {
+      document.getElementById('winnerOverlay').classList.remove('show');
+      if (autoCloseTimer) { clearTimeout(autoCloseTimer); autoCloseTimer = null; }
+      isSpinning = false;
+    }
+
+    // ===== 彩带效果 =====
+    function spawnConfetti() {
+      const colors = ['#ffd700','#e94560','#00c853','#2196f3','#ff6f00','#ab47bc'];
+      for (let i = 0; i < 40; i++) {
+        const el = document.createElement('div');
+        el.className = 'confetti';
+        el.style.left = Math.random() * 100 + 'vw';
+        el.style.background = colors[Math.floor(Math.random()*colors.length)];
+        el.style.animationDuration = (1.5 + Math.random()) + 's';
+        el.style.animationDelay = Math.random() * 0.5 + 's';
+        el.style.width = (6 + Math.random()*6) + 'px';
+        el.style.height = (6 + Math.random()*6) + 'px';
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 3000);
+      }
+    }
+
+    // ===== 接收后端消息 =====
+    // 后端会通过 window.onHostGift(username, giftName) 触发抽奖
+    window.onHostGift = function(username, giftName) {
+      if (triggerGiftName && giftName !== triggerGiftName) return; // 不是指定礼物，忽略
+      giftTriggerSpin(username, giftName);
+    };
+
+    // 后端更新配置
+    window.onHostConfig = function(config) {
+      if (config.prizes && Array.isArray(config.prizes)) {
+        prizes = config.prizes;
+        renderGrid();
+      }
+      if (config.triggerGift !== undefined) {
+        triggerGiftName = config.triggerGift;
+        document.getElementById('triggerGiftName').textContent = triggerGiftName || '任意礼物';
+      }
+    };
+
+    // 后端触发手动抽奖
+    window.onHostSpin = function() {
+      manualSpin();
+    };
+
+    // ===== 初始化 =====
+    renderGrid();
+  </script>
+</body>
+</html>

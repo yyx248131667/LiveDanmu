@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>电子木鱼配置</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #1a1a2e; --bg2: #16213e; --bg3: #0f3460;
+      --text: #e0e0e0; --text2: #a0a0a0;
+      --accent: #e94560; --green: #00c853;
+      --border: #2a2a4a;
+    }
+    body { font-family: 'Microsoft YaHei', sans-serif; background: var(--bg); color: var(--text); padding: 20px; }
+    .container { max-width: 900px; margin: 0 auto; }
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid var(--border); }
+    .header h1 { font-size: 24px; color: var(--accent); }
+
+    .platform-tabs { display: flex; gap: 12px; margin-bottom: 24px; }
+    .tab-btn { padding: 12px 24px; background: var(--bg2); border: 2px solid var(--border); color: var(--text2); border-radius: 8px; cursor: pointer; font-size: 15px; font-weight: 600; transition: all 0.3s; }
+    .tab-btn:hover { background: var(--bg3); }
+    .tab-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+    .config-panel { background: var(--bg2); border-radius: 12px; padding: 24px; border: 1px solid var(--border); }
+    .config-section { margin-bottom: 28px; }
+    .config-section:last-child { margin-bottom: 0; }
+    .section-title { font-size: 16px; color: var(--accent); margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+
+    .form-row { display: flex; align-items: center; gap: 16px; margin-bottom: 14px; }
+    .form-label { font-size: 14px; color: var(--text); font-weight: 500; min-width: 80px; flex-shrink: 0; }
+    .form-input { background: rgba(0,0,0,0.3); border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: 6px; font-size: 14px; }
+    .form-input:focus { outline: none; border-color: var(--accent); }
+    select.form-input { cursor: pointer; min-width: 200px; }
+    select.form-input option { background: var(--bg2); color: var(--text); }
+
+    .inline-group { display: flex; gap: 24px; align-items: center; flex-wrap: wrap; }
+    .checkbox-item { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 14px; }
+    .checkbox-item input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
+
+    .multiplier-input { width: 90px; }
+    .multiplier-item { display: flex; align-items: center; gap: 8px; }
+    .multiplier-item label { font-size: 14px; color: var(--text); }
+
+    .color-row { display: flex; align-items: center; gap: 10px; }
+    .color-picker { width: 40px; height: 32px; border: 1px solid var(--border); border-radius: 4px; cursor: pointer; padding: 0; }
+    .color-hex { font-size: 12px; color: var(--text2); font-family: monospace; }
+
+    .image-row { display: flex; align-items: center; gap: 12px; }
+    .btn { padding: 8px 16px; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    .btn-secondary { background: var(--bg3); color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary:hover { background: rgba(255,255,255,0.1); }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:hover { opacity: 0.9; }
+    .btn-success { background: var(--green); color: white; }
+    .btn-success:hover { opacity: 0.9; }
+    .btn-group { display: flex; gap: 12px; margin-top: 24px; }
+
+    /* 显示预览 */
+    .display-preview { background: rgba(0,0,0,0.4); border-radius: 12px; padding: 24px; display: flex; flex-direction: column; align-items: center; gap: 12px; min-height: 180px; justify-content: center; }
+    .display-preview img { width: 100px; height: 100px; object-fit: contain; }
+    .display-preview .merit-text { font-size: 28px; font-weight: bold; }
+
+    /* 实时预览窗口 */
+    .live-preview { background: rgba(0,0,0,0.5); border: 2px solid var(--border); border-radius: 12px; padding: 20px; margin-top: 16px; position: relative; overflow: hidden; min-height: 200px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .live-preview-title { position: absolute; top: 8px; left: 12px; font-size: 11px; color: var(--text2); background: rgba(0,0,0,0.5); padding: 2px 8px; border-radius: 4px; }
+    .live-preview .muyu-img { width: 120px; height: 120px; object-fit: contain; cursor: pointer; transition: transform 0.1s; }
+    .live-preview .muyu-img:active { transform: scale(0.92); }
+    .live-preview .muyu-img.hit { animation: muyuBounce 0.3s ease; }
+    @keyframes muyuBounce { 0%{transform:scale(1)} 30%{transform:scale(0.88)} 60%{transform:scale(1.04)} 100%{transform:scale(1)} }
+    .live-preview .float-container { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); width: 200px; height: 60px; pointer-events: none; }
+    .live-preview .float-text { position: absolute; font-size: 22px; font-weight: bold; white-space: nowrap; animation: floatUp 1.2s ease forwards; text-shadow: 0 0 8px rgba(255,215,0,0.5); }
+    @keyframes floatUp { 0%{opacity:1;transform:translateY(0)} 100%{opacity:0;transform:translateY(-50px)} }
+    .live-preview .preview-label { font-size: 13px; color: var(--text2); margin-top: 8px; }
+    .live-stats { display: flex; gap: 24px; margin-top: 8px; }
+    .live-stats .stat { text-align: center; }
+    .live-stats .stat-val { font-size: 20px; font-weight: bold; }
+    .live-stats .stat-lbl { font-size: 11px; color: var(--text2); }
+
+    /* 浏览器显示 */
+    .browser-btns { display: flex; gap: 12px; }
+    .browser-btns .btn { padding: 10px 20px; font-size: 14px; }
+    .help-text { font-size: 12px; color: var(--text2); margin-top: 6px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header"><h1>电子木鱼配置</h1></div>
+
+    <div class="platform-tabs">
+      <button class="tab-btn active" data-platform="douyin">抖音木鱼</button>
+      <button class="tab-btn" data-platform="weixin">视频号木鱼</button>
+    </div>
+
+    <div class="config-panel">
+      <!-- 自定义图片 -->
+      <div class="config-section">
+        <div class="section-title">🖼️ 自定义图片</div>
+        <div class="image-row">
+          <input type="file" id="image-file-input" accept="image/*" style="display:none;" />
+          <button class="btn btn-secondary" onclick="document.getElementById('image-file-input').click()">选择照片</button>
+          <span id="selected-image-name" style="font-size:13px;color:var(--text2);">未选择</span>
+        </div>
+      </div>
+
+      <!-- 触发动效设置 -->
+      <div class="config-section">
+        <div class="section-title">⚡ 触发动效设置</div>
+        <div class="inline-group">
+          <label class="checkbox-item"><input type="checkbox" id="trigger-gift" checked /><span>礼物触发</span></label>
+          <label class="checkbox-item"><input type="checkbox" id="trigger-danmaku" checked /><span>弹幕触发</span></label>
+          <label class="checkbox-item"><input type="checkbox" id="trigger-like" checked /><span>点赞触发</span></label>
+        </div>
+      </div>
+
+      <!-- 礼物选择 -->
+      <div class="config-section">
+        <div class="section-title">🎁 礼物选择</div>
+        <div class="form-row">
+          <span class="form-label">选择礼物</span>
+          <select class="form-input" id="gift-select" multiple size="6" style="width:100%;"></select>
+        </div>
+        <p class="help-text">按住 Ctrl 或 Shift 可多选礼物</p>
+      </div>
+
+      <!-- 倍数设置 -->
+      <div class="config-section">
+        <div class="section-title">✖️ 倍数设置</div>
+        <div class="inline-group">
+          <div class="multiplier-item">
+            <label>礼物倍数</label>
+            <input type="number" class="form-input multiplier-input" id="gift-multiplier" value="1" min="0.1" step="0.1" />
+          </div>
+          <div class="multiplier-item">
+            <label>点赞倍数</label>
+            <input type="number" class="form-input multiplier-input" id="like-multiplier" value="1" min="0.1" step="0.1" />
+          </div>
+        </div>
+      </div>
+
+      <!-- 显示设置 -->
+      <div class="config-section">
+        <div class="section-title">🎨 显示设置</div>
+        <div class="form-row">
+          <span class="form-label">功德文字</span>
+          <input type="text" class="form-input" id="merit-text" value="功德" style="width:120px;" />
+          <span class="form-label" style="margin-left:16px;">文字颜色</span>
+          <div class="color-row">
+            <input type="color" class="color-picker" id="text-color" value="#ffd700" />
+            <span class="color-hex" id="text-color-preview">#ffd700</span>
+          </div>
+          <span class="form-label" style="margin-left:16px;">背景颜色</span>
+          <div class="color-row">
+            <input type="color" class="color-picker" id="bg-color" value="#2d5016" />
+            <span class="color-hex" id="bg-color-preview">#2d5016</span>
+          </div>
+        </div>
+        <!-- 显示预览：图片 + 文字 -->
+        <div class="display-preview" id="preview-display">
+          <img src="assets/木鱼.png" id="preview-image" alt="木鱼" onerror="this.style.display='none'" />
+          <div class="merit-text" id="preview-merit-text" style="color:#ffd700;">功德 +1</div>
+        </div>
+      </div>
+
+      <!-- 实时预览窗口 -->
+      <div class="config-section">
+        <div class="section-title">👁️ 实时预览</div>
+        <div class="live-preview" id="live-preview">
+          <span class="live-preview-title">点击木鱼测试效果</span>
+          <div class="float-container" id="float-container"></div>
+          <img src="assets/木鱼.png" class="muyu-img" id="live-muyu-img" alt="木鱼" />
+          <div class="live-stats">
+            <div class="stat"><div class="stat-val" id="live-total" style="color:#ffd700;">0</div><div class="stat-lbl">总功德</div></div>
+            <div class="stat"><div class="stat-val" id="live-likes" style="color:#ffd700;">0</div><div class="stat-lbl">点赞</div></div>
+            <div class="stat"><div class="stat-val" id="live-gifts" style="color:#ffd700;">0</div><div class="stat-lbl">礼物</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 浏览器显示 -->
+      <div class="config-section">
+        <div class="section-title">🌐 浏览器显示</div>
+        <div class="browser-btns">
+          <button class="btn btn-primary" id="btn-open-douyin">打开抖音浏览器显示</button>
+          <button class="btn btn-success" id="btn-open-weixin">打开视频号浏览器显示</button>
+        </div>
+        <p class="help-text">点击按钮打开浏览器显示窗口，可用于 OBS 捕获</p>
+      </div>
+
+      <!-- 操作按钮 -->
+      <div class="btn-group">
+        <button class="btn btn-primary" id="btn-save-config">💾 保存配置</button>
+        <button class="btn btn-success" id="btn-apply-config">✅ 应用配置</button>
+        <button class="btn btn-secondary" id="btn-reset-config">↺ 重置默认</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="muyu-config.js"></script>
+</body>
+</html>
